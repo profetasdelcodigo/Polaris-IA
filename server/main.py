@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 # Dimensión de entrada: usamos vocab_size reducido como bag-of-words
 # (se limita a 10_000 para que la red empiece manejable)
 INPUT_DIM = 10_000
-LEARNING_INTERVAL_MINUTES = int(os.getenv("LEARNING_INTERVAL_MINUTES", "30"))
+LEARNING_INTERVAL_MINUTES = int(os.getenv("LEARNING_INTERVAL_MINUTES", "10"))
 
 # ─────────────────────────────────────────────
 #  ESTADO GLOBAL DE LA IA
