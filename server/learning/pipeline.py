@@ -27,23 +27,72 @@ TAVILY_API_KEY  = os.getenv("TAVILY_API_KEY")
 SERPER_API_KEY  = os.getenv("SERPER_API_KEY")
 GROQ_API_KEY    = os.getenv("AI_API_KEY")
 
-# ─── Temas semilla iniciales (punto de partida) ────────────────────────────
+# ─── Temas semilla — Cubre todas las capacidades objetivo ─────────────────
 SEED_TOPICS = [
-    "inteligencia artificial historia",
+    # 🖼️  GENERACIÓN DE IMÁGENES
+    "generación de imágenes con inteligencia artificial",
+    "modelos de difusión stable diffusion funcionamiento",
+    "GANs redes generativas adversariales",
+    "DALL-E arquitectura generación de imágenes",
+    "Midjourney técnicas de prompting",
+    "procesamiento de imágenes visión por computadora",
+    "redes convolucionales CNN imágenes",
+    "ControlNet imagen a imagen AI",
+    "VAE autoencoder variacional imágenes",
+
+    # 📝  GENERACIÓN DE TEXTO
+    "modelos de lenguaje grande LLM GPT",
+    "transformers atención BERT arquitectura",
+    "generación de texto con redes neuronales",
+    "fine-tuning modelos de lenguaje",
+    "tokenización NLP procesamiento texto",
+    "RLHF reinforcement learning from human feedback",
+    "RAG retrieval augmented generation",
+    "embeddings vectores semánticos texto",
+
+    # 🌐  DESARROLLO WEB
+    "desarrollo web moderno HTML CSS JavaScript",
+    "React Next.js frameworks frontend",
+    "APIs REST GraphQL diseño",
+    "bases de datos SQL NoSQL diseño",
+    "arquitectura microservicios backend",
+    "WebSockets comunicación tiempo real",
+    "CSS animaciones diseño responsivo",
+    "generación automática de código AI GitHub Copilot",
+
+    # 📱  DESARROLLO DE APPS
+    "desarrollo Android Kotlin Jetpack Compose",
+    "desarrollo iOS Swift SwiftUI",
+    "React Native Flutter aplicaciones multiplataforma",
+    "arquitectura MVVM aplicaciones móviles",
+    "UX UI diseño aplicaciones móviles",
+    "publicación APK Google Play Store",
+    "apps generadas con inteligencia artificial",
+
+    # 🎬  GENERACIÓN DE VIDEO
+    "generación de video con inteligencia artificial",
+    "Sora OpenAI video generation",
+    "Runway ML video synthesis",
+    "modelos de difusión para video",
+    "síntesis de video deepfake técnicas",
+    "animación 3D automatizada con IA",
+    "video frame interpolation AI",
+
+    # 🎵  GENERACIÓN DE AUDIO
+    "síntesis de voz texto a voz TTS",
+    "generación de música con IA",
+    "clonación de voz ElevenLabs",
+    "Whisper reconocimiento de voz",
+
+    # 🤖  IA GENERAL Y FUNDAMENTOS
+    "inteligencia artificial historia evolución",
     "redes neuronales artificiales funcionamiento",
-    "aprendizaje profundo deep learning",
-    "procesamiento de lenguaje natural NLP",
-    "transformers BERT GPT",
-    "visión por computador",
-    "robótica autónoma",
-    "computación cuántica",
-    "biología molecular ADN",
-    "física cuántica partículas",
-    "astronomía universo expansión",
-    "filosofía de la mente consciencia",
-    "matemáticas teoría de números",
-    "economía comportamental",
-    "psicología cognitiva memoria",
+    "aprendizaje por refuerzo reinforcement learning",
+    "computación cuántica algoritmos",
+    "ética inteligencia artificial sesgos",
+    "AGI inteligencia artificial general",
+    "memory augmented neural networks",
+    "neurociencia computacional cerebro",
 ]
 
 
@@ -60,15 +109,24 @@ def generate_new_topics(learned_topic: str, learned_text: str) -> list[str]:
     if not GROQ_API_KEY:
         return _fallback_topics(learned_topic)
 
-    prompt = f"""Acabas de aprender sobre: "{learned_topic}"
+    prompt = f"""Eres el motor de curiosidad de Polaris IA, un sistema de inteligencia artificial autónoma.
 
-Fragmento de lo aprendido: "{learned_text[:400]}..."
+Acabas de aprender sobre: "{learned_topic}"
+Fragmento aprendido: "{learned_text[:400]}..."
 
-Genera exactamente 5 temas de investigación nuevos y específicos que:
-- Sean directamente relacionados o derivados de lo aprendido
-- Sean lo suficientemente específicos para buscar en internet
-- Varíen en disciplinas (ciencia, tecnología, historia, filosofía, etc.)
-- Estén en español
+Polaris IA está siendo entrenada para eventualmente:
+- Generar imágenes (como Stable Diffusion, DALL-E)
+- Generar texto, código y contenido (como GPT)
+- Crear sitios web y aplicaciones
+- Generar videos y audio
+- Desarrollar apps móviles (Android/iOS)
+
+Genera exactamente 5 temas de investigación nuevos y ESPECÍFICOS que:
+1. Estén relacionados con lo que se acaba de aprender
+2. Contribuyan al conocimiento en alguna de las capacidades objetivo arriba
+3. Sean lo suficientemente específicos para buscar en internet
+4. Estén en español
+5. Varíen entre diferentes dominios cuando sea posible
 
 Responde ÚNICAMENTE con un JSON array de strings, sin explicaciones:
 ["tema 1", "tema 2", "tema 3", "tema 4", "tema 5"]"""
