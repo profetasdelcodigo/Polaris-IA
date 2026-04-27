@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polaris IA — Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #04080F;
+      --bg2:       #070D1C;
+      --accent:    #00DDFF;
+      --green:     #00FF88;
+      --gold:      #FFCC00;
+      --red:       #FF4455;
+      --dim:       #2A4060;
+      --text:      #8BB0D0;
+      --border:    #0E2040;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOP BAR ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+    .logo {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--accent);
+      letter-spacing: 6px;
+    }
+    .logo span { color: var(--text); font-size: 0.7rem; display: block; letter-spacing: 4px; margin-top: -4px; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 14px;
+      border: 1px solid var(--dim);
+      border-radius: 20px;
+      font-size: 0.75rem;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--red);
+      animation: pulse-dot 1s infinite;
+    }
+    .dot.online { background: var(--green); }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── CANVAS ── */
+    #canvas-wrap {
+      position: relative;
+      overflow: hidden;
+    }
+    canvas { width: 100%; height: 100%; }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      border-left: 1px solid var(--border);
+      background: var(--bg2);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+
+    .metric-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .metric-label {
+      font-size: 0.65rem;
+      color: var(--dim);
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+    .metric-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .metric-value.accent { color: var(--accent); }
+    .metric-value.green  { color: var(--green); }
+    .metric-value.gold   { color: var(--gold); }
+    .metric-value.red    { color: var(--red); }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), rgba(0,221,255,0.3));
+      border-radius: 2px;
+      transition: width 0.8s ease;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    .topic-box {
+      font-size: 0.7rem;
+      color: var(--accent);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    #last-update {
+      font-size: 0.65rem;
+      color: var(--dim);
+      margin-top: auto;
+      padding-top: 8px;
+    }
+
+    /* ── BOTTOM STATUS BAR ── */
+    footer {
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+      padding: 5px 24px;
+      font-size: 0.65rem;
+      color: var(--dim);
+      display: flex;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <div class="logo">POLARIS IA <span>NEURAL MONITOR v1.0</span></div>
+    </div>
+    <div class="status-pill">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">Conectando...</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <div id="canvas-wrap">
+      <canvas id="neural-canvas"></canvas>
+    </div>
+
+    <aside class="sidebar">
+      <div class="metric-card">
+        <div class="metric-label">🧠 NEURONAS</div>
+        <div class="metric-value accent" id="m-neurons">0</div>
+        <div class="progress-bar"><div class="progress-fill" id="p-neurons" style="width:0%"></div></div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">🔗 PARÁMETROS</div>
+        <div class="metric-value green" id="m-params">0</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="metric-card">
+        <div class="metric-label">📉 LOSS ACTUAL</div>
+        <div class="metric-value" id="m-loss" style="color:var(--gold)">-.----</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">📚 TEXTOS APRENDIDOS</div>
+        <div class="metric-value accent" id="m-texts">0</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">⚡ CRECIMIENTOS</div>
+        <div class="metric-value gold" id="m-growth">0</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="metric-label">📡 APRENDIENDO AHORA:</div>
+      <div class="topic-box" id="m-topic">Iniciando...</div>
+
+      <div id="last-update">🕐 --:--:--</div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>POLARIS IA — Sistema autónomo de aprendizaje continuo</span>
+    <span id="footer-arch">Arquitectura: cargando...</span>
+  </footer>
+
+<script>
+// ─────────────────────────────────────────
+//  CONFIGURACIÓN
+// ─────────────────────────────────────────
+const SERVER = 'http://localhost:8000';
+const POLL_MS = 5000;
+
+// ─────────────────────────────────────────
+//  CANVAS — VISUALIZACIÓN DE LA RED
+// ─────────────────────────────────────────
+const canvas = document.getElementById('neural-canvas');
+const ctx = canvas.getContext('2d');
+
+let neurons = [];
+let connections = [];
+let particles = [];
+let animFrame;
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+}
+window.addEventListener('resize', () => { resizeCanvas(); rebuildVisualization(); });
+resizeCanvas();
+
+// Layout áureo en espiral — igual que en Android
+function goldenPos(i, total) {
+  const angle  = i * 137.5 * (Math.PI / 180);
+  const radius = 50 + i * 14;
+  const cx = canvas.width / 2;
+  const cy = canvas.height * 0.48;
+  return {
+    x: Math.max(20, Math.min(canvas.width  - 20, cx + radius * Math.cos(angle))),
+    y: Math.max(20, Math.min(canvas.height - 20, cy + radius * Math.sin(angle)))
+  };
+}
+
+function rebuildVisualization() {
+  const n = Math.min(neurons.length, 300);
+  for (let i = 0; i < n; i++) {
+    const p = goldenPos(i, n);
+    neurons[i].x = p.x;
+    neurons[i].y = p.y;
+  }
+}
+
+function addNeuron(idx, status = 'IDLE') {
+  const pos = goldenPos(idx, idx + 1);
+  neurons.push({ ...pos, status, scale: 0.1, glow: 0.8 });
+}
+
+function addConnection(i, j) {
+  if (i !== j && i < neurons.length && j < neurons.length) {
+    connections.push({ from: i, to: j, t: Math.random() });
+  }
+}
+
+function spawnParticle(from, to) {
+  particles.push({ from, to, t: 0, speed: 0.003 + Math.random() * 0.004 });
+}
+
+// Color según estado
+const COLORS = {
+  IDLE:     '#1A5A9A',
+  LEARNING: '#00FF88',
+  ACTIVE:   '#FFFFFF',
+  NEW:      '#00DDFF',
+};
+const GLOW_COLORS = {
+  IDLE:     'rgba(0,100,220,',
+  LEARNING: 'rgba(0,255,136,',
+  ACTIVE:   'rgba(200,220,255,',
+  NEW:      'rgba(0,221,255,',
+};
+
+// Loop de animación
+let lastTime = 0;
+function draw(ts) {
+  animFrame = requestAnimationFrame(draw);
+  const dt = ts - lastTime; lastTime = ts;
+
+  ctx.fillStyle = '#04080F';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Grid de fondo
+  ctx.strokeStyle = 'rgba(14,32,64,0.5)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < canvas.width; x += 60) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x, canvas.height); ctx.stroke();
+  }
+  for (let y = 0; y < canvas.height; y += 60) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  }
+
+  // Conexiones
+  connections.forEach(conn => {
+    const a = neurons[conn.from], b = neurons[conn.to];
+    if (!a || !b) return;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(20,60,140,0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  });
+
+  // Partículas
+  particles = particles.filter(p => p.t <= 1);
+  particles.forEach(p => {
+    p.t += p.speed;
+    const a = neurons[p.from], b = neurons[p.to];
+    if (!a || !b) return;
+    const px = a.x + (b.x - a.x) * p.t;
+    const py = a.y + (b.y - a.y) * p.t;
+
+    const g = ctx.createRadialGradient(px,py,0, px,py,6);
+    g.addColorStop(0, 'rgba(255,255,255,0.9)');
+    g.addColorStop(1, 'rgba(0,170,255,0)');
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  });
+
+  // Neuronas
+  const t = Date.now() / 1000;
+  neurons.forEach((n, i) => {
+    // Animar escala de entrada
+    if (n.scale < 1.0) n.scale = Math.min(1.0, n.scale + 0.04);
+    // Glow fade
+    if (n.glow > 0.3) n.glow -= 0.008;
+
+    const pulse = n.status === 'IDLE' ? 0.7 + 0.3 * Math.sin(t * 1.5 + i * 0.3) : 1;
+    const r = 10 * n.scale;
+    const c = COLORS[n.status] || COLORS.IDLE;
+    const gc = GLOW_COLORS[n.status] || GLOW_COLORS.IDLE;
+
+    // Glow radial
+    const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 3.5);
+    grad.addColorStop(0, gc + (n.glow * pulse * 0.6) + ')');
+    grad.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r * 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Anillo
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r * 1.7, 0, Math.PI * 2);
+    ctx.strokeStyle = gc + (n.glow * 0.7) + ')';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Núcleo
+    const core = ctx.createRadialGradient(n.x-r*0.3, n.y-r*0.3, 0, n.x, n.y, r);
+    core.addColorStop(0, 'rgba(255,255,255,0.95)');
+    core.addColorStop(1, c);
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = core;
+    ctx.fill();
+  });
+}
+requestAnimationFrame(draw);
+
+// ─────────────────────────────────────────
+//  POLLING A LA API
+// ─────────────────────────────────────────
+let prevNeuronCount = 0;
+
+function formatBig(n) {
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n;
+}
+
+function lossColor(l) {
+  if (l > 5)  return 'var(--red)';
+  if (l > 2)  return '#FFAA00';
+  if (l > 0.5) return 'var(--gold)';
+  return 'var(--green)';
+}
+
+async function fetchStatus() {
+  try {
+    const r = await fetch(`${SERVER}/metrics`, { signal: AbortSignal.timeout(5000) });
+    const d = await r.json();
+
+    // Actualizar UI
+    document.getElementById('m-neurons').textContent = d.neurons;
+    document.getElementById('m-params').textContent  = formatBig(d.connections);
+    document.getElementById('m-texts').textContent   = d.texts_learned;
+    document.getElementById('m-growth').textContent  = d.growth_events;
+    document.getElementById('m-topic').textContent   = d.last_topic || 'Aprendiendo...';
+    document.getElementById('last-update').textContent = '🕐 ' + new Date().toLocaleTimeString();
+
+    const lossEl = document.getElementById('m-loss');
+    lossEl.textContent = d.loss?.toFixed(4) ?? '-.----';
+    lossEl.style.color = lossColor(d.loss || 0);
+
+    // Barra de progreso neuronas (max 10k)
+    document.getElementById('p-neurons').style.width = Math.min(100, d.neurons / 100) + '%';
+
+    // Estado de conexión
+    document.getElementById('status-dot').className = 'dot online';
+    document.getElementById('status-text').textContent = 'ONLINE';
+
+    // Nuevas neuronas en la visualización
+    if (d.neurons > prevNeuronCount) {
+      for (let i = prevNeuronCount; i < Math.min(d.neurons, 300); i++) {
+        addNeuron(i, i === d.neurons - 1 ? 'NEW' : 'IDLE');
+        // Conectar con vecinos aleatorios
+        if (i > 0) {
+          const j = Math.floor(Math.random() * i);
+          addConnection(i, j);
+          spawnParticle(j, i);
+        }
+      }
+      // Actualizar barra de pie
+      document.getElementById('footer-arch').textContent =
+        `Neuronas: ${d.neurons} | Crecimientos: ${d.growth_events}`;
+      prevNeuronCount = d.neurons;
+    }
+
+    // Activar neuronas aleatoriamente
+    if (neurons.length > 0) {
+      for (let k = 0; k < 3; k++) {
+        const idx = Math.floor(Math.random() * neurons.length);
+        neurons[idx].status = 'ACTIVE';
+        neurons[idx].glow = 1.0;
+        setTimeout(() => {
+          if (neurons[idx]) neurons[idx].status = 'IDLE';
+        }, 800);
+      }
+      // Partículas aleatorias
+      for (let k = 0; k < 4; k++) {
+        const a = Math.floor(Math.random() * neurons.length);
+        const b = Math.floor(Math.random() * neurons.length);
+        if (a !== b) spawnParticle(a, b);
+      }
+    }
+
+  } catch {
+    document.getElementById('status-dot').className = 'dot';
+    document.getElementById('status-text').textContent = 'OFFLINE';
+  }
+}
+
+fetchStatus();
+setInterval(fetchStatus, POLL_MS);
+</script>
+</body>
+</html>
