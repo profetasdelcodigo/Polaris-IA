@@ -1,3 +1,13 @@
+---
+title: Polaris IA
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+app_port: 7860
+---
+
 # 🧠 Polaris IA
 
 Sistema de inteligencia artificial autónoma con red neuronal que crece sola.
