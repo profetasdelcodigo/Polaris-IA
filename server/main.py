@@ -273,11 +273,11 @@ async def growth_log():
     return model.growth_log[-50:]  # Últimos 50 eventos
 
 
-@app.post("/trigger-cycle", summary="Forzar un ciclo de aprendizaje ahora")
+@app.api_route("/trigger-cycle", methods=["GET", "POST"], summary="Forzar un ciclo de aprendizaje ahora")
 async def trigger_cycle():
-    """Ejecuta un ciclo de aprendizaje inmediatamente (útil para testing)."""
+    """Ejecuta un ciclo de aprendizaje inmediatamente (GET o POST)."""
     asyncio.create_task(learning_job())
-    return {"message": "Ciclo de aprendizaje iniciado"}
+    return {"message": "✅ Ciclo de aprendizaje iniciado", "status": "running"}
 
 
 # ─────────────────────────────────────────────
