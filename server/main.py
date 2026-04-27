@@ -19,6 +19,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from learning.pipeline import run_learning_cycle, seed_agenda
 from learning.tokenizer_wrapper import get_vocab_size
@@ -216,9 +218,19 @@ def get_full_status() -> dict:
 #  ENDPOINTS REST
 # ─────────────────────────────────────────────
 
-@app.get("/", summary="Verificar que el servidor está vivo")
+# Servir el monitor visual en la raíz
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
+
+@app.get("/", response_class=HTMLResponse, summary="Monitor visual de Polaris IA")
 async def root():
-    return {"message": "🧠 Polaris IA está viva", "version": "1.0.0"}
+    """Sirve el monitor neural interactivo."""
+    html_path = os.path.join(_static_dir, "index.html")
+    if os.path.exists(html_path):
+        with open(html_path, encoding="utf-8") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>🧠 Polaris IA está viva</h1><p>Monitor no encontrado.</p>")
 
 
 @app.get("/status", summary="Estado completo de la IA")
