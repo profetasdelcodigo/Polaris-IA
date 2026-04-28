@@ -31,9 +31,10 @@ class AnimatedNeuron(
 
 class PolarisViewModel : ViewModel() {
 
-    // URL del servidor FastAPI (cambiar por la URL de Railway/Render en producción)
-    private val serverUrl = "ws://10.0.2.2:8000/ws"   // 10.0.2.2 = localhost en emulador Android
-    private val metricsUrl = "http://10.0.2.2:8000/metrics"
+    // URL del servidor FastAPI en Hugging Face
+    private val serverBaseUrl = "https://pdlc-polaris-ia.hf.space"
+    private val metricsUrl   = "$serverBaseUrl/status"
+    private val progressUrl  = "$serverBaseUrl/progress"
 
     // ── Estado observable ─────────────────────
 
@@ -51,6 +52,9 @@ class PolarisViewModel : ViewModel() {
 
     private val _isConnected = MutableStateFlow(false)
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+
+    private val _progress = MutableStateFlow(LearningProgress())
+    val progress: StateFlow<LearningProgress> = _progress.asStateFlow()
 
     // ── Dimensiones del canvas (se actualizan desde la UI) ────
     var canvasWidth: Float = 1080f
@@ -70,13 +74,33 @@ class PolarisViewModel : ViewModel() {
             while (true) {
                 try {
                     fetchMetrics()
+                    fetchProgress()
                     _isConnected.value = true
                 } catch (e: Exception) {
                     _isConnected.value = false
                     _statusMessage.value = "Reconectando..."
                 }
-                delay(5_000)
+                delay(if (_progress.value.active) 1000 else 5000)
             }
+        }
+    }
+
+    private suspend fun fetchProgress() {
+        val result = withContext(Dispatchers.IO) {
+            try {
+                val url = java.net.URL(progressUrl)
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 3000
+                conn.readTimeout = 3000
+                val response = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+                response
+            } catch (e: Exception) {
+                null
+            }
+        }
+        result?.let { json ->
+            parseAndUpdateProgress(json)
         }
     }
 
@@ -107,12 +131,16 @@ class PolarisViewModel : ViewModel() {
 
     private fun parseAndUpdateMetrics(json: String) {
         try {
-            val neurons = extractInt(json, "neurons") ?: return
+            // Fallback: intentar encontrar 'neurons' o 'neuronas' o la versión anidada
+            val neurons = extractInt(json, "neurons") 
+                ?: extractInt(json, "neuronas")
+                ?: 0
+            
             val connections = extractInt(json, "connections") ?: 0
-            val loss = extractFloat(json, "loss") ?: 0f
-            val texts = extractInt(json, "texts_learned") ?: 0
-            val growth = extractInt(json, "growth_events") ?: 0
-            val topic = extractString(json, "last_topic") ?: "Aprendiendo..."
+            val loss = extractFloat(json, "loss") ?: extractFloat(json, "pérdida_actual") ?: 0f
+            val texts = extractInt(json, "texts_learned") ?: extractInt(json, "textos_totales") ?: 0
+            val growth = extractInt(json, "growth_events") ?: extractInt(json, "eventos_de_crecimiento") ?: 0
+            val topic = extractString(json, "last_topic") ?: extractString(json, "tema") ?: "Sincronizando..."
 
             val newMetrics = LearningMetrics(
                 neurons = neurons,
@@ -126,7 +154,7 @@ class PolarisViewModel : ViewModel() {
             )
 
             val currentCount = _animatedNeurons.value.size
-            if (neurons != currentCount) {
+            if (neurons != currentCount && neurons > 0) {
                 updateNeuronVisualization(neurons, connections)
             }
 
@@ -134,8 +162,30 @@ class PolarisViewModel : ViewModel() {
             _statusMessage.value = "🧠 Polaris IA activa — ${neurons} neuronas"
 
         } catch (e: Exception) {
-            // Ignorar errores de parseo
+            _statusMessage.value = "Error de sincronización"
         }
+    }
+
+    private fun parseAndUpdateProgress(json: String) {
+        try {
+            val active = json.contains("\"active\":true")
+            val phase = extractString(json, "phase") ?: "idle"
+            val percent = extractInt(json, "percent") ?: 0
+            val topic = extractString(json, "topic") ?: ""
+            val step = extractInt(json, "step") ?: 0
+            val total = extractInt(json, "total_steps") ?: 0
+            val gained = extractInt(json, "neurons_gained") ?: 0
+
+            _progress.value = LearningProgress(
+                active = active,
+                phase = phase,
+                percent = percent,
+                topic = topic,
+                step = step,
+                totalSteps = total,
+                neuronsGained = gained
+            )
+        } catch (e: Exception) {}
     }
 
     // ─────────────────────────────────────────

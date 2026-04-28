@@ -77,3 +77,17 @@ data class GrowthEvent(
     val layer: Int,
     val totalNeuronsAfter: Int
 )
+
+// ─────────────────────────────────────────────
+//  PROGRESO DEL CICLO ACTUAL
+// ─────────────────────────────────────────────
+
+data class LearningProgress(
+    val active: Boolean = false,
+    val phase: String = "idle",
+    val percent: Int = 0,
+    val topic: String = "",
+    val step: Int = 0,
+    val totalSteps: Int = 0,
+    val neuronsGained: Int = 0
+)

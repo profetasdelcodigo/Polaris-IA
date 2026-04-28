@@ -48,6 +48,7 @@ fun PolarisMainScreen(viewModel: PolarisViewModel) {
     val animatedNeurons by viewModel.animatedNeurons.collectAsState()
     val connections     by viewModel.connections.collectAsState()
     val metrics         by viewModel.metrics.collectAsState()
+    val progress        by viewModel.progress.collectAsState()
     val isConnected     by viewModel.isConnected.collectAsState()
 
     Row(
@@ -79,6 +80,7 @@ fun PolarisMainScreen(viewModel: PolarisViewModel) {
         // ── Dashboard de métricas (30% de la pantalla) ──
         DashboardPanel(
             metrics = metrics,
+            progress = progress,
             isConnected = isConnected,
             modifier = Modifier
                 .weight(0.30f)

@@ -196,6 +196,7 @@ class GrowingMLP(nn.Module):
             "output_dim": self.output_dim,
             "total_neurons": self.count_neurons(),
             "total_params": self.count_params(),
+            "growth_events": len(self.growth_log),
         }
 
     def count_neurons(self) -> int:

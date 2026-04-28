@@ -225,15 +225,17 @@ def get_full_status() -> dict:
     arch = model.get_architecture()
     mem_stats = get_memory_stats()
     trainer_status = trainer.get_status()
+    
+    topic = last_cycle_result.get("topic") if last_cycle_result else "Esperando..."
 
-    return {
+    status_data = {
         "status": "running",
         "timestamp": datetime.utcnow().isoformat(),
         "neural_network": {
             "neurons": arch["total_neurons"],
             "params": arch["total_params"],
             "layers": arch["hidden_layers"],
-            "growth_events": trainer_status["total_growth_events"],
+            "growth_events": arch.get("growth_events", 0),
         },
         "learning": {
             "current_loss": trainer_status["current_loss"],
@@ -245,6 +247,35 @@ def get_full_status() -> dict:
         "memory": mem_stats,
         "last_cycle": last_cycle_result,
     }
+    
+    # --- COMPATIBILIDAD ---
+    
+    # 1. Claves Planas (Para Android y clientes simples)
+    status_data.update({
+        "neurons": arch["total_neurons"],
+        "growth_events": arch.get("growth_events", 0),
+        "loss": trainer_status["current_loss"],
+        "texts_learned": trainer_status["total_texts_learned"],
+        "last_topic": topic
+    })
+    
+    # 2. Claves en Español (Para versiones antiguas del monitor)
+    status_data["red_neuronal"] = {
+        "neuronas": arch["total_neurons"],
+        "eventos_de_crecimiento": arch.get("growth_events", 0),
+        "capas": arch["hidden_layers"],
+        "parámetros": arch["total_params"]
+    }
+    status_data["aprendizaje"] = {
+        "textos_totales": trainer_status["total_texts_learned"],
+        "pérdida_actual": trainer_status["current_loss"],
+        "pasos_totales": trainer_status["total_steps"]
+    }
+    status_data["último_ciclo"] = {
+        "tema": topic
+    }
+    
+    return status_data
 
 
 # ─────────────────────────────────────────────

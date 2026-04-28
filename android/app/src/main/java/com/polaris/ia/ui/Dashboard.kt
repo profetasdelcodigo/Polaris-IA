@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.polaris.ia.data.LearningMetrics
+import com.polaris.ia.data.LearningProgress
 
 // ─────────────────────────────────────────────
 //  COLORES DEL DASHBOARD
@@ -39,6 +40,7 @@ private val DashDim     = Color(0xFF4A6080)
 @Composable
 fun DashboardPanel(
     metrics: LearningMetrics,
+    progress: LearningProgress,
     isConnected: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -56,6 +58,60 @@ fun DashboardPanel(
         DashHeader(isConnected)
 
         DashDivider()
+
+        // ── BARRA DE PROGRESO REAL (solo si está activo) ──
+        if (progress.active) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚡ ${progress.phase.uppercase()}",
+                        color = DashAccent,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "${progress.percent}%",
+                        color = DashGreen,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                
+                // Barra de progreso
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(DashBorder)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress.percent / 100f)
+                            .background(
+                                Brush.horizontalGradient(listOf(DashGreen, DashAccent))
+                            )
+                    )
+                }
+
+                Text(
+                    text = progress.topic,
+                    color = DashText,
+                    fontSize = 8.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+            DashDivider()
+        }
 
         // Neuronas
         DashMetric(
