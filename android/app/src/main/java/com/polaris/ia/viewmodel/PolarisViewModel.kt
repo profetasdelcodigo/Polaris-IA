@@ -249,17 +249,25 @@ class PolarisViewModel : ViewModel() {
     }
 
     private fun calculateNeuronPosition(index: Int, total: Int): Pair<Float, Float> {
-        // Layout en espiral para que se vea dinámico y orgánico
-        val angle = index * 137.5f * (Math.PI / 180f)  // Ángulo áureo
-        val radius = 60f + (index * 18f)
+        // Layout de "Cerebro" (Dos lóbulos)
+        val isLeft = index % 2 == 0
+        
+        // Distribución esférica proyectada a 2D para cada lóbulo
+        val phi = acos(-1f + (2f * index) / total.coerceAtLeast(1))
+        val theta = sqrt(total * PI.toFloat()) * phi
+        
         val centerX = canvasWidth / 2f
-        val centerY = canvasHeight * 0.45f
-
-        val x = (centerX + radius * cos(angle)).toFloat()
-            .coerceIn(40f, canvasWidth - 40f)
-        val y = (centerY + radius * sin(angle)).toFloat()
-            .coerceIn(40f, canvasHeight * 0.85f)
-
+        val centerY = canvasHeight * 0.42f
+        
+        // Desplazamiento lateral para formar los dos hemisferios
+        val lóbuloShift = if (isLeft) -canvasWidth * 0.18f else canvasWidth * 0.18f
+        val radius = canvasWidth * 0.28f
+        
+        val x = (centerX + lóbuloShift + radius * sin(phi) * cos(theta))
+            .coerceIn(50f, canvasWidth - 50f)
+        val y = (centerY + radius * 1.3f * sin(phi) * sin(theta))
+            .coerceIn(80f, canvasHeight * 0.75f)
+            
         return Pair(x, y)
     }
 

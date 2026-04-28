@@ -40,7 +40,10 @@ fun NeuralNetworkGraph(
     connections: List<Connection>,
     modifier: Modifier = Modifier
 ) {
-    // Animación infinita de partículas en las conexiones
+    // Estado para zoom y pan
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
     val infiniteTransition = rememberInfiniteTransition(label = "particles")
     val particleOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -52,12 +55,11 @@ fun NeuralNetworkGraph(
         label = "particleOffset"
     )
 
-    // Pulso global suave para neuronas inactivas
     val globalPulse by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
+        initialValue = 0.8f,
         targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
+            animation = tween(2500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "globalPulse"
@@ -67,55 +69,67 @@ fun NeuralNetworkGraph(
         modifier = modifier
             .fillMaxSize()
             .background(ColorBg)
+            .pointerInput(Unit) {
+                detectTransformGestures { _, pan, zoom, _ ->
+                    scale = (scale * zoom).coerceIn(0.5f, 5f)
+                    offset += pan
+                }
+            }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            // 1. Fondo — grid sutil de puntos
-            drawBackgroundGrid()
+            // Aplicar transformación de cámara
+            withTransform({
+                translate(offset.x, offset.y)
+                scale(scale, scale, Offset(size.width / 2, size.height / 2))
+            }) {
+                drawBackgroundGrid()
 
-            // 2. Mapa de neuronas por ID para buscar posiciones rápido
-            val neuronMap = animatedNeurons.associate { it.neuron.id to it.neuron }
+                val neuronMap = animatedNeurons.associateBy { it.neuron.id }
 
-            // 3. Dibujar conexiones
-            connections.forEach { conn ->
-                val from = neuronMap[conn.fromId] ?: return@forEach
-                val to = neuronMap[conn.toId] ?: return@forEach
-                drawConnection(from, to, conn.strength, particleOffset)
-            }
+                // Dibujar conexiones primero (atrás)
+                connections.forEach { conn ->
+                    val from = neuronMap[conn.fromId]?.neuron ?: return@forEach
+                    val to = neuronMap[conn.toId]?.neuron ?: return@forEach
+                    drawConnection(from, to, conn.strength, particleOffset)
+                }
 
-            // 4. Dibujar neuronas
-            animatedNeurons.forEach { animNeuron ->
-                val neuron = animNeuron.neuron
-                val scale = animNeuron.scale.value
-                val glow = animNeuron.glow.value
-
-                drawNeuron(neuron, scale, glow, globalPulse)
+                // Dibujar neuronas
+                animatedNeurons.forEach { animNeuron ->
+                    drawNeuron(
+                        animNeuron.neuron,
+                        animNeuron.scale.value,
+                        animNeuron.glow.value,
+                        globalPulse
+                    )
+                }
             }
         }
     }
 }
 
 // ─────────────────────────────────────────────
-//  DIBUJAR FONDO GRID
+//  DIBUJAR FONDO GRID (MEJORADO)
 // ─────────────────────────────────────────────
 
 private fun DrawScope.drawBackgroundGrid() {
-    val gridColor = Color(0xFF0A1628).copy(alpha = 0.6f)
-    val step = 60f
-
-    var x = 0f
-    while (x < size.width) {
-        drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = 0.5f)
+    val gridColor = Color(0xFF00DDFF).copy(alpha = 0.05f)
+    val step = 80f
+    
+    // Dibujar líneas verticales y horizontales infinitas (basadas en viewport)
+    var x = -5000f
+    while (x < 5000f) {
+        drawLine(gridColor, Offset(x, -5000f), Offset(x, 5000f), strokeWidth = 1f)
         x += step
     }
-    var y = 0f
-    while (y < size.height) {
-        drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 0.5f)
+    var y = -5000f
+    while (y < 5000f) {
+        drawLine(gridColor, Offset(-5000f, y), Offset(5000f, y), strokeWidth = 1f)
         y += step
     }
 }
 
 // ─────────────────────────────────────────────
-//  DIBUJAR CONEXIÓN CON PARTÍCULA
+//  DIBUJAR CONEXIÓN (CON COLORES SEGÚN LÓBULO)
 // ─────────────────────────────────────────────
 
 private fun DrawScope.drawConnection(
@@ -124,38 +138,37 @@ private fun DrawScope.drawConnection(
     strength: Float,
     particleT: Float
 ) {
-    val startOffset = Offset(from.x, from.y)
-    val endOffset = Offset(to.x, to.y)
+    val start = Offset(from.x, from.y)
+    val end = Offset(to.x, to.y)
+    
+    // El color depende del hemisferio (par = Cyan, impar = Púrpura)
+    val baseColor = if (from.id % 2 == 0) ColorNew else Color(0xFFBB44FF)
 
-    // Línea base (tenue)
     drawLine(
-        color = ColorConnLine.copy(alpha = 0.15f + strength * 0.2f),
-        start = startOffset,
-        end = endOffset,
-        strokeWidth = 0.8f + strength * 1.5f,
+        brush = Brush.linearGradient(
+            colors = listOf(baseColor.copy(alpha = 0.1f), baseColor.copy(alpha = 0.4f)),
+            start = start,
+            end = end
+        ),
+        start = start,
+        end = end,
+        strokeWidth = 1f + strength * 2f,
         cap = StrokeCap.Round
     )
 
-    // Partícula que fluye por la línea
+    // Partícula
     val px = from.x + (to.x - from.x) * particleT
     val py = from.y + (to.y - from.y) * particleT
-
-    // Glow de la partícula
+    
     drawCircle(
-        color = ColorParticle.copy(alpha = 0.4f),
-        radius = 5f,
-        center = Offset(px, py)
-    )
-    // Núcleo brillante
-    drawCircle(
-        color = Color.White.copy(alpha = 0.8f),
-        radius = 2f,
+        color = Color.White.copy(alpha = 0.6f),
+        radius = 2.5f,
         center = Offset(px, py)
     )
 }
 
 // ─────────────────────────────────────────────
-//  DIBUJAR NEURONA CON GLOW
+//  DIBUJAR NEURONA (PREMIUM GLOW)
 // ─────────────────────────────────────────────
 
 private fun DrawScope.drawNeuron(
@@ -165,58 +178,48 @@ private fun DrawScope.drawNeuron(
     globalPulse: Float
 ) {
     val center = Offset(neuron.x, neuron.y)
-
-    // Color según estado
+    val isLeft = neuron.id % 2 == 0
+    
+    val baseColor = if (isLeft) ColorNew else Color(0xFFBB44FF)
     val coreColor = when (neuron.status) {
-        NeuronStatus.IDLE     -> ColorIdle
+        NeuronStatus.IDLE     -> baseColor.copy(alpha = 0.6f)
         NeuronStatus.LEARNING -> ColorLearning
         NeuronStatus.ACTIVE   -> ColorActive
         NeuronStatus.NEW      -> ColorNew
     }
 
-    val glowColor = when (neuron.status) {
-        NeuronStatus.IDLE     -> Color(0xFF0055AA)
-        NeuronStatus.LEARNING -> Color(0xFF00FF66)
-        NeuronStatus.ACTIVE   -> Color(0xFFCCDDFF)
-        NeuronStatus.NEW      -> Color(0xFF00CCFF)
-    }
+    val radius = 14f * scale * (if (neuron.status == NeuronStatus.IDLE) globalPulse else 1.1f)
 
-    val baseRadius = 12f * scale
-    val effectivePulse = if (neuron.status == NeuronStatus.IDLE) globalPulse else 1f
-
-    // Halo exterior (glow grande)
+    // Glow Exterior
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(
-                glowColor.copy(alpha = glow * 0.5f * effectivePulse),
-                Color.Transparent
-            ),
+            0.0f to coreColor.copy(alpha = 0.5f * glow),
+            1.0f to Color.Transparent,
             center = center,
-            radius = baseRadius * 3.5f
+            radius = radius * 4f
         ),
-        radius = baseRadius * 3.5f,
+        radius = radius * 4f,
         center = center
     )
 
-    // Anillo intermedio
+    // Borde Neón
     drawCircle(
-        color = glowColor.copy(alpha = glow * 0.7f),
-        radius = baseRadius * 1.8f,
+        color = coreColor,
+        radius = radius,
         center = center,
-        style = Stroke(width = 1.5f)
+        style = Stroke(width = 2f)
     )
 
-    // Núcleo de la neurona (relleno sólido)
+    // Núcleo Brillante
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.9f),
-                coreColor
-            ),
+            0.0f to Color.White,
+            0.4f to coreColor,
+            1.0f to coreColor.copy(alpha = 0.2f),
             center = center,
-            radius = baseRadius
+            radius = radius
         ),
-        radius = baseRadius,
+        radius = radius * 0.8f,
         center = center
     )
 }
