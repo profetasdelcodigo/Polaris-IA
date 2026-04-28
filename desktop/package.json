@@ -1,0 +1,29 @@
+{
+  "name": "polaris-ia-desktop",
+  "version": "1.0.0",
+  "description": "Polaris IA — Monitor Neural para Windows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.pdlc.polaris-ia",
+    "productName": "Polaris IA",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": ["main.js", "preload.js", "renderer/**", "assets/**"]
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

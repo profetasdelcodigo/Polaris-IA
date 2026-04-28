@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://pdlc-polaris-ia.hf.space https://fonts.googleapis.com https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
+<title>Polaris IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04080F;--bg2:#070D1C;--border:#0E2040;--text:#8BB0D0;--dim:#2A4060;
+  --memoria:#FFD700;--procesamiento:#00DDFF;--entrada:#4A9EFF;
+  --salida:#BB44FF;--crecimiento:#FF6B35;--atencion:#00FF88;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;overflow:hidden;user-select:none}
+
+/* ── TITLEBAR ── */
+#titlebar{
+  height:38px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px 0 16px;background:#020810;border-bottom:1px solid var(--border);
+  -webkit-app-region:drag;flex-shrink:0;
+}
+.tb-left{display:flex;align-items:center;gap:10px}
+.tb-logo{font-family:'Orbitron',sans-serif;font-size:.75rem;font-weight:900;color:#00DDFF;letter-spacing:4px}
+.tb-sub{font-size:.55rem;color:var(--dim);letter-spacing:2px}
+.tb-controls{display:flex;gap:4px;-webkit-app-region:no-drag}
+.tb-btn{
+  width:28px;height:22px;border:none;background:transparent;color:var(--dim);
+  font-size:.7rem;cursor:pointer;border-radius:3px;transition:all .15s;
+  display:flex;align-items:center;justify-content:center;
+}
+.tb-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+.tb-btn.close:hover{background:#FF4455;color:#fff}
+.tb-status{display:flex;align-items:center;gap:6px;font-size:.6rem;-webkit-app-region:no-drag}
+.dot{width:7px;height:7px;border-radius:50%;background:#FF4455;animation:blink 1s infinite}
+.dot.on{background:#00FF88}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;height:calc(100vh - 38px)}
+.main{display:grid;grid-template-columns:1fr 190px;flex:1;overflow:hidden;position:relative}
+canvas{width:100%;height:100%}
+.sidebar{
+  border-left:1px solid var(--border);background:var(--bg2);
+  padding:12px 10px;display:flex;flex-direction:column;gap:8px;overflow-y:auto
+}
+.mc{border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+.ml{font-size:.6rem;color:var(--dim);letter-spacing:2px;margin-bottom:3px}
+.mv{font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:700}
+.pbar{height:3px;background:var(--border);border-radius:2px;margin-top:5px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,#00DDFF,rgba(0,221,255,.2));border-radius:2px;transition:width .8s}
+.legend{display:flex;flex-direction:column;gap:5px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.6rem}
+.ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.trigger-btn{
+  background:linear-gradient(135deg,rgba(0,221,255,.15),rgba(0,221,255,.05));
+  border:1px solid #00DDFF;color:#00DDFF;padding:7px;border-radius:6px;
+  font-family:'Orbitron',sans-serif;font-size:.6rem;letter-spacing:2px;
+  cursor:pointer;transition:all .2s;text-align:center;
+}
+.trigger-btn:hover{background:rgba(0,221,255,.25)}
+footer{
+  border-top:1px solid var(--border);background:var(--bg2);
+  padding:4px 16px;font-size:.6rem;color:var(--dim);
+  display:flex;justify-content:space-between;flex-shrink:0;
+}
+
+/* ── PANEL DETALLE ── */
+#detail-panel{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  background:rgba(4,8,15,.97);z-index:100;
+  display:none;flex-direction:column;padding:20px;overflow-y:auto;
+}
+#detail-panel.show{display:flex}
+.back-btn{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  border:1px solid #00DDFF;color:#00DDFF;padding:7px 14px;border-radius:6px;
+  font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:2px;
+  width:fit-content;margin-bottom:18px;transition:all .2s;
+}
+.back-btn:hover{background:rgba(0,221,255,.1)}
+.neuron-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.neuron-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',sans-serif;font-size:1.2rem;font-weight:900;flex-shrink:0}
+.neuron-title{font-family:'Orbitron',sans-serif;font-size:1rem;font-weight:700}
+.neuron-subtitle{font-size:.65rem;color:var(--dim);margin-top:4px}
+.type-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.6rem;letter-spacing:2px;margin-top:6px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.info-box{border:1px solid var(--border);border-radius:6px;padding:10px}
+.activity-bar{height:5px;border-radius:3px;overflow:hidden;background:var(--border);margin-top:6px}
+.activity-fill{height:100%;border-radius:3px;transition:width 1s}
+.connections-list{border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:12px}
+.conn-item{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:.65rem}
+.conn-item:last-child{border-bottom:none}
+.history-title{font-family:'Orbitron',sans-serif;font-size:.75rem;color:#00DDFF;letter-spacing:3px;margin-bottom:8px}
+.memory-item{background:rgba(0,221,255,.05);border:1px solid rgba(0,221,255,.1);border-radius:4px;padding:7px;margin-bottom:5px;font-size:.65rem;line-height:1.5}
+</style>
+</head>
+<body>
+
+<!-- TITLEBAR personalizada (sin borde nativo de Windows) -->
+<div id="titlebar">
+  <div class="tb-left">
+    <div>
+      <div class="tb-logo">POLARIS IA</div>
+      <div class="tb-sub">MONITOR NEURAL v2.0 — ESCRITORIO</div>
+    </div>
+  </div>
+  <div class="tb-status">
+    <div class="dot" id="dot"></div>
+    <span id="status-txt">Conectando...</span>
+    <span style="margin-left:10px;color:var(--dim)" id="neuron-count-header">0 neuronas</span>
+  </div>
+  <div class="tb-controls">
+    <button class="tb-btn" onclick="window.polarisApp?.minimize()" title="Minimizar">─</button>
+    <button class="tb-btn" onclick="window.polarisApp?.maximize()" title="Maximizar">□</button>
+    <button class="tb-btn close" onclick="window.polarisApp?.close()" title="Minimizar a bandeja">✕</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="main">
+    <canvas id="c"></canvas>
+
+    <!-- PANEL DETALLE NEURONA -->
+    <div id="detail-panel">
+      <div class="back-btn" onclick="closeDetail()">← VOLVER AL CEREBRO</div>
+      <div class="neuron-header">
+        <div class="neuron-icon" id="d-icon"></div>
+        <div>
+          <div class="neuron-title" id="d-title">NEURONA #0</div>
+          <div class="neuron-subtitle" id="d-subtitle"></div>
+          <div class="type-badge" id="d-badge">—</div>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="info-box"><div class="ml">ACTIVACIÓN</div><div class="mv" id="d-activation">0%</div><div class="activity-bar"><div class="activity-fill" id="d-act-fill"></div></div></div>
+        <div class="info-box"><div class="ml">CONEXIONES</div><div class="mv" id="d-connections">0</div></div>
+        <div class="info-box"><div class="ml">CAPA</div><div class="mv" id="d-layer">—</div></div>
+        <div class="info-box"><div class="ml">CREACIÓN</div><div class="mv" style="font-size:.7rem" id="d-created">—</div></div>
+      </div>
+      <div class="connections-list">
+        <div class="history-title">🔗 FUNCIÓN PRINCIPAL</div>
+        <div class="memory-item" id="d-function"></div>
+      </div>
+      <div class="connections-list">
+        <div class="history-title">📊 AVANCES</div>
+        <div id="d-progress-list"></div>
+      </div>
+      <div><div class="history-title">🧠 TEMAS PROCESADOS</div><div id="d-topics"></div></div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="mc"><div class="ml">🧠 NEURONAS</div><div class="mv" style="color:#00DDFF" id="m-n">0</div><div class="pbar"><div class="pfill" id="p-n" style="width:0%"></div></div></div>
+      <div class="mc"><div class="ml">📉 LOSS</div><div class="mv" id="m-l" style="color:#FFCC00">-.----</div></div>
+      <div class="mc"><div class="ml">📚 TEXTOS</div><div class="mv" style="color:#00FF88" id="m-t">0</div></div>
+      <div class="mc"><div class="ml">⚡ CREC.</div><div class="mv" style="color:#FF6B35" id="m-g">0</div></div>
+      <div class="mc"><div class="ml">📡 TEMA ACTUAL</div><div style="font-size:.6rem;color:#00DDFF;margin-top:4px;word-break:break-word;line-height:1.4" id="m-tp">—</div></div>
+      <button class="trigger-btn" onclick="triggerCycle()">⚡ FORZAR CICLO</button>
+      <div style="height:1px;background:var(--border)"></div>
+      <div class="legend">
+        <div style="font-size:.55rem;color:var(--dim);letter-spacing:2px;margin-bottom:3px">TIPOS DE NEURONA</div>
+        <div class="legend-item"><div class="ldot" style="background:var(--memoria)"></div>MEMORIA (L)</div>
+        <div class="legend-item"><div class="ldot" style="background:var(--crecimiento)"></div>CRECIMIENTO (XL)</div>
+        <div class="legend-item"><div class="ldot" style="background:var(--procesamiento)"></div>PROCESAM. (M)</div>
+        <div class="legend-item"><div class="ldot" style="background:var(--salida)"></div>SALIDA (M)</div>
+        <div class="legend-item"><div class="ldot" style="background:var(--atencion)"></div>ATENCION (S)</div>
+        <div class="legend-item"><div class="ldot" style="background:var(--entrada)"></div>ENTRADA (XS)</div>
+      </div>
+      <div style="font-size:.55rem;color:var(--dim);margin-top:auto">🖱️ Click neurona = detalles</div>
+    </aside>
+  </div>
+  <footer>
+    <span>POLARIS IA — Sistema autónomo de aprendizaje continuo</span>
+    <span id="f-arch">—</span>
+  </footer>
+</div>
+
+<script>
+const SERVER = 'https://pdlc-polaris-ia.hf.space';
+const POLL = 5000;
+const TYPES = [
+  { name:'MEMORIA',      color:'#FFD700', glow:'rgba(255,215,0,',   size:18, desc:'Almacena conocimiento semántico a largo plazo en pgvector.' },
+  { name:'CRECIMIENTO',  color:'#FF6B35', glow:'rgba(255,107,53,',  size:20, desc:'Detecta estancamiento y activa el crecimiento de la red.' },
+  { name:'PROCESAMIENTO',color:'#00DDFF', glow:'rgba(0,221,255,',   size:14, desc:'Transforma representaciones internas entre capas.' },
+  { name:'SALIDA',       color:'#BB44FF', glow:'rgba(187,68,255,',  size:14, desc:'Genera predicciones del siguiente token durante entrenamiento.' },
+  { name:'ATENCION',     color:'#00FF88', glow:'rgba(0,255,136,',   size:12, desc:'Pondera la importancia de cada segmento del texto aprendido.' },
+  { name:'ENTRADA',      color:'#4A9EFF', glow:'rgba(74,158,255,',  size:10, desc:'Recibe embeddings tokenizados del texto web scrapeado.' },
+];
+function getType(idx, total, g) {
+  if (idx < 3) return TYPES[5];
+  if (idx >= total - g && g > 0) return TYPES[1];
+  if (idx % 7 === 0) return TYPES[0];
+  if (idx % 5 === 0) return TYPES[3];
+  if (idx % 3 === 0) return TYPES[4];
+  return TYPES[2];
+}
+
+let neurons=[], connections=[], particles=[], serverData=null, selectedNeuron=null, learnedTopics=[], prevCount=0, growthEvents=0;
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+
+function resize(){canvas.width=canvas.parentElement.clientWidth;canvas.height=canvas.parentElement.clientHeight;}
+window.addEventListener('resize',()=>{resize();layoutNeurons();});
+resize();
+
+function goldenPos(i){
+  const a=i*2.399963, r=30+Math.sqrt(i)*38;
+  return{x:Math.max(25,Math.min(canvas.width-25,canvas.width/2+r*Math.cos(a))),y:Math.max(25,Math.min(canvas.height-25,canvas.height*.48+r*Math.sin(a)))};
+}
+function layoutNeurons(){neurons.forEach((n,i)=>{const p=goldenPos(i);n.x=p.x;n.y=p.y;});}
+function addNeuron(idx,type){const p=goldenPos(idx);neurons.push({x:p.x,y:p.y,type,scale:.05,glow:1,pulse:Math.random()*Math.PI*2,activation:Math.random()});}
+function spawnParticle(f,t){if(f<neurons.length&&t<neurons.length)particles.push({from:f,to:t,t:0,speed:.004+Math.random()*.004});}
+
+canvas.addEventListener('click',e=>{
+  const r=canvas.getBoundingClientRect(),mx=(e.clientX-r.left)*(canvas.width/r.width),my=(e.clientY-r.top)*(canvas.height/r.height);
+  for(let i=neurons.length-1;i>=0;i--){const n=neurons[i],rd=n.type.size*n.scale*1.5;if(Math.hypot(mx-n.x,my-n.y)<=rd){openDetail(i);return;}}
+});
+
+function openDetail(idx){
+  selectedNeuron=idx;const n=neurons[idx],t=n.type,act=Math.round(n.activation*100);
+  document.getElementById('d-icon').style.cssText=`background:${t.color}22;border:2px solid ${t.color};color:${t.color}`;
+  document.getElementById('d-icon').textContent=idx;
+  document.getElementById('d-title').textContent=`NEURONA #${idx}`;document.getElementById('d-title').style.color=t.color;
+  document.getElementById('d-subtitle').textContent=`Tipo: ${t.name} | Tamaño: ${t.size}px`;
+  document.getElementById('d-badge').textContent=t.name;document.getElementById('d-badge').style.cssText=`background:${t.color}33;color:${t.color}`;
+  document.getElementById('d-activation').textContent=act+'%';
+  document.getElementById('d-act-fill').style.cssText=`width:${act}%;background:${t.color}`;
+  const conns=connections.filter(c=>c.from===idx||c.to===idx).length;
+  document.getElementById('d-connections').textContent=conns;
+  document.getElementById('d-layer').textContent=serverData?`Capa 1/${serverData.neural_network?.layers?.length||1}`:'—';
+  document.getElementById('d-created').textContent=`Paso ~${Math.round((idx/Math.max(neurons.length,1))*(serverData?.learning?.total_steps||0))}`;
+  document.getElementById('d-function').textContent=t.desc;
+  const loss=serverData?.learning?.current_loss||0;
+  document.getElementById('d-progress-list').innerHTML=`
+    <div class="conn-item"><span>Activación</span><span style="color:${t.color}">${act}%</span></div>
+    <div class="conn-item"><span>Loss</span><span style="color:#FFCC00">${(loss*n.activation).toFixed(4)}</span></div>
+    <div class="conn-item"><span>Conexiones</span><span style="color:#00FF88">${conns}</span></div>
+    <div class="conn-item"><span>Textos</span><span style="color:#00DDFF">${serverData?.learning?.total_texts||0}</span></div>
+    <div class="conn-item"><span>Crecimiento</span><span style="color:#FF6B35">${serverData?.neural_network?.growth_events||0}</span></div>`;
+  document.getElementById('d-topics').innerHTML=learnedTopics.length>0?learnedTopics.map(tp=>`<div class="memory-item">🧠 ${tp}</div>`).join(''):`<div class="memory-item">🧠 ${serverData?.last_cycle?.topic||'iniciando...'}</div>`;
+  document.getElementById('detail-panel').classList.add('show');
+}
+function closeDetail(){document.getElementById('detail-panel').classList.remove('show');selectedNeuron=null;}
+
+// ── RENDER ──
+function draw(){
+  requestAnimationFrame(draw);
+  ctx.fillStyle='#04080F';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle='rgba(14,32,64,.4)';ctx.lineWidth=.5;
+  for(let x=0;x<canvas.width;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+  for(let y=0;y<canvas.height;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+  const t=Date.now()/1000;
+  connections.forEach(conn=>{
+    const a=neurons[conn.from],b=neurons[conn.to];if(!a||!b)return;
+    ctx.beginPath();ctx.strokeStyle='rgba(20,60,140,.2)';ctx.lineWidth=.7;ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  });
+  particles=particles.filter(p=>p.t<=1);
+  particles.forEach(p=>{
+    p.t+=p.speed;const a=neurons[p.from],b=neurons[p.to];if(!a||!b)return;
+    const px=a.x+(b.x-a.x)*p.t,py=a.y+(b.y-a.y)*p.t;
+    const g=ctx.createRadialGradient(px,py,0,px,py,5);g.addColorStop(0,'rgba(255,255,255,.9)');g.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+  });
+  neurons.forEach((n,i)=>{
+    if(n.scale<1)n.scale=Math.min(1,n.scale+.05);
+    if(n.glow>.25)n.glow-=.006;
+    const r=n.type.size*n.scale,pulse=.8+.2*Math.sin(t*1.2+n.pulse),isSel=i===selectedNeuron;
+    if(isSel){ctx.beginPath();ctx.arc(n.x,n.y,r*3,0,Math.PI*2);ctx.strokeStyle=n.type.color;ctx.lineWidth=1.5;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);}
+    const grad=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,r*3.5);
+    grad.addColorStop(0,n.type.glow+(n.glow*pulse*.7)+')');grad.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(n.x,n.y,r*3.5,0,Math.PI*2);ctx.fillStyle=grad;ctx.fill();
+    ctx.beginPath();ctx.arc(n.x,n.y,r*1.6,0,Math.PI*2);ctx.strokeStyle=n.type.glow+(n.glow*.6)+')';ctx.lineWidth=1.2;ctx.stroke();
+    const core=ctx.createRadialGradient(n.x-r*.3,n.y-r*.3,0,n.x,n.y,r);
+    core.addColorStop(0,'rgba(255,255,255,.95)');core.addColorStop(1,n.type.color);
+    ctx.beginPath();ctx.arc(n.x,n.y,r,0,Math.PI*2);ctx.fillStyle=core;ctx.fill();
+    if(r>12&&n.scale>.9){ctx.fillStyle='rgba(0,0,0,.7)';ctx.font=`${Math.min(r*.7,10)}px Share Tech Mono`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(i,n.x,n.y);}
+  });
+  ctx.textAlign='left';ctx.textBaseline='alphabetic';
+}
+requestAnimationFrame(draw);
+
+// ── POLLING ──
+function lossColor(l){return l>7?'#FF4455':l>4?'#FFAA00':l>1?'#FFCC00':'#00FF88';}
+let prevNeurons=0;
+
+async function fetchData(){
+  try{
+    const r=await fetch(`${SERVER}/status`,{signal:AbortSignal.timeout(8000)});
+    const d=await r.json();serverData=d;
+    const count=d.neural_network?.neurons??d.red_neuronal?.neuronas??0;
+    const ge=d.neural_network?.growth_events??d.red_neuronal?.eventos_de_crecimiento??0;
+    const texts=d.learning?.total_texts??d.aprendizaje?.textos_totales??0;
+    const loss=d.learning?.current_loss??d.aprendizaje?.pérdida_actual??0;
+    const topic=d.last_cycle?.topic??d.último_ciclo?.tema??'—';
+    growthEvents=ge;
+    document.getElementById('m-n').textContent=count;
+    document.getElementById('p-n').style.width=Math.min(100,count/100)+'%';
+    document.getElementById('m-l').textContent=loss.toFixed(4);document.getElementById('m-l').style.color=lossColor(loss);
+    document.getElementById('m-t').textContent=texts;document.getElementById('m-g').textContent=ge;
+    document.getElementById('m-tp').textContent=topic;document.getElementById('neuron-count-header').textContent=`${count} neuronas`;
+    document.getElementById('f-arch').textContent=`Capas: [${d.neural_network?.layers??d.red_neuronal?.capas??count}] | Params: ${(d.neural_network?.params??d.red_neuronal?.parámetros??0).toLocaleString()}`;
+    document.getElementById('dot').className='dot on';document.getElementById('status-txt').textContent='ONLINE';
+    if(count>prevCount){
+      const total=Math.min(count,400);
+      for(let i=prevCount;i<total;i++){addNeuron(i,getType(i,total,ge));if(i>0){for(let k=0;k<Math.min(3,i);k++){const j=Math.floor(Math.random()*i);connections.push({from:i,to:j});spawnParticle(j,i);}}}
+      layoutNeurons();
+      // Notificación nativa cuando crece
+      if(prevCount>0&&count>prevCount)window.polarisApp?.notifyGrowth({neurons:count});
+      prevCount=count;
+    }
+    if(topic&&topic!=='—'&&!learnedTopics.includes(topic)){learnedTopics.push(topic);if(learnedTopics.length>10)learnedTopics.shift();}
+    if(neurons.length>0){for(let k=0;k<4;k++){const idx=Math.floor(Math.random()*neurons.length);neurons[idx].glow=1;neurons[idx].activation=Math.random();}for(let k=0;k<5;k++){const a=Math.floor(Math.random()*neurons.length),b=Math.floor(Math.random()*neurons.length);if(a!==b)spawnParticle(a,b);}}
+    if(selectedNeuron!==null)openDetail(selectedNeuron);
+  }catch{document.getElementById('dot').className='dot';document.getElementById('status-txt').textContent='OFFLINE';}
+}
+
+async function triggerCycle(){
+  try{
+    await fetch(`${SERVER}/trigger-cycle`,{method:'GET'});
+    document.getElementById('m-tp').textContent='⚡ Ciclo iniciado...';
+  }catch(e){console.error(e);}
+}
+
+fetchData();
+setInterval(fetchData,POLL);
+</script>
+</body>
+</html>

@@ -54,6 +54,18 @@ trainer: PolarisTrainer | None = None
 scheduler: AsyncIOScheduler | None = None
 last_cycle_result: dict = {}
 
+# ── Estado en tiempo real del ciclo activo ────
+cycle_state: dict = {
+    "active": False,
+    "topic": "",
+    "step": 0,
+    "total_steps": 0,
+    "percent": 0.0,
+    "phase": "idle",          # idle | searching | training | saving | generating
+    "neurons_before": 0,
+    "started_at": None,
+}
+
 # Clientes WebSocket conectados (para enviar updates en tiempo real)
 ws_clients: list[WebSocket] = []
 
@@ -62,24 +74,45 @@ ws_clients: list[WebSocket] = []
 #  CICLO DE APRENDIZAJE (background)
 # ─────────────────────────────────────────────
 
+def _progress_callback(phase: str, step: int, total: int, topic: str = ""):
+    """Callback llamado desde el pipeline para actualizar el progreso en tiempo real."""
+    global cycle_state
+    cycle_state["phase"]   = phase
+    cycle_state["step"]    = step
+    cycle_state["total_steps"] = total
+    cycle_state["percent"] = round((step / max(total, 1)) * 100, 1)
+    if topic:
+        cycle_state["topic"] = topic
+    logger.debug("📊 Progreso: %s %d/%d (%.1f%%)", phase, step, total, cycle_state["percent"])
+
+
 async def learning_job():
     """
     Tarea programada: ejecuta un ciclo de aprendizaje y notifica a los clientes.
     """
-    global last_cycle_result
+    global last_cycle_result, cycle_state
     logger.info("⏰ Iniciando ciclo de aprendizaje programado...")
 
-    # Ejecutar en thread separado para no bloquear el event loop
+    cycle_state.update({
+        "active": True, "step": 0, "total_steps": 7,
+        "percent": 0.0, "phase": "starting",
+        "neurons_before": model.count_neurons() if model else 0,
+        "started_at": datetime.utcnow().isoformat(),
+    })
+
     loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, run_learning_cycle, trainer)
+    result = await loop.run_in_executor(
+        None, run_learning_cycle, trainer, _progress_callback
+    )
     last_cycle_result = result
 
-    # Guardar el estado actualizado en Supabase
-    await loop.run_in_executor(
-        None, save_brain, model, result.get("loss", 0.0)
-    )
+    _progress_callback("saving", 6, 7)
+    await loop.run_in_executor(None, save_brain, model, result.get("loss", 0.0))
 
-    # Notificar a todos los clientes WebSocket conectados
+    _progress_callback("done", 7, 7)
+    cycle_state["active"]  = False
+    cycle_state["percent"] = 100.0
+
     status = get_full_status()
     await broadcast_update(status)
 
@@ -271,6 +304,25 @@ async def growth_log():
     if not model:
         return []
     return model.growth_log[-50:]  # Últimos 50 eventos
+
+
+@app.get("/progress", summary="Progreso en tiempo real del ciclo activo")
+async def progress():
+    """
+    Retorna el estado exacto del ciclo de aprendizaje activo:
+    - percent: 0-100 del ciclo actual
+    - phase: qué está haciendo ahora (searching, training, saving...)
+    - topic: tema que está estudiando
+    - active: si hay un ciclo corriendo ahora mismo
+    - neurons_before/after: cuántas neuronas tenía antes y tiene ahora
+    """
+    current_neurons = model.count_neurons() if model else 0
+    return {
+        **cycle_state,
+        "neurons_current": current_neurons,
+        "neurons_gained":  current_neurons - cycle_state.get("neurons_before", 0),
+        "next_cycle_in":   f"{LEARNING_INTERVAL_MINUTES} min",
+    }
 
 
 @app.api_route("/trigger-cycle", methods=["GET", "POST"], summary="Forzar un ciclo de aprendizaje ahora")
